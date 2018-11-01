@@ -61,4 +61,4 @@ async def on_message(message: discord.Message):
 
     await client.send_message(message.channel, response)
 
-client.run("NDcxOTkwOTQ1MTczMzQwMTYx.Drssew.aSz8Q82OB0ls18esjUkIrjnrgc4")
+client.run("suersecretCoe")
