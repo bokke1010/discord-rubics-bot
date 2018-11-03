@@ -46,20 +46,26 @@ def group(lst, n):
 
 items = ["startTime", "endTime", "dayOfWeek", "subject", "attendees", "location"]
 def getLesson(leerlingnummer):
-    website = urllib.request.urlopen("https://beta.rooster.hetmml.nl/get/s/"+leerlingnummer+".json")
-    # time.sleep(1)
-    siteContent = (website.read())
+    try:
+        website = urllib.request.urlopen("https://beta.rooster.hetmml.nl/get/s/"+leerlingnummer+".json")
+        # time.sleep(1)
+        siteContent = (website.read())
+    except urllib.error.HTTPError:
+        return ["error"]
 
     siteList = (str(siteContent)[2:-1])
     siteJSON = json.loads(siteList)
 
-    # Manual overwrite
-    today = datetime.datetime.today().weekday()
-    # today = 2
 
     # Manual overwrite
-    currentTime = interpolate( float(datetime.datetime.now().hour) + float(datetime.datetime.now().minute/100),[8.30,9.45,9.45,10.45, 10.45, 12.15,12.15,13.15,13.15,14.45,14.45,15.45,15.45,17],[0,0,1,1,2,2,3,3,4,4,5,5,6,6])
+    currentTime = interpolate( float(datetime.datetime.now().hour) + float(datetime.datetime.now().minute/100),[0,8.30,8.30,9.45,9.45,10.45, 10.45, 12.15,12.15,13.15,13.15,14.45,14.45,15.45,15.45,17,17,24],[-1,-1,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7])
     # currentTime = interpolate(10.36,[8.20,9.35,9.35,10.35, 10.35, 12.05,12.05,13.05,13.05,14.35,14.35,15.35,15.5,17],[0,0,1,1,2,2,3,3,4,4,5,5,6,6])
+
+    # Manual overwrite
+    today = (datetime.datetime.today().weekday() + (currentTime == 7)) % 7
+    # today = 2
+
+    currentTime = currentTime - (currentTime == 7) * 8
 
     currentlesson = None
     nextlesson = None
