@@ -1,6 +1,10 @@
 import datetime, random, urllib.request, time, re, json
 
+# Every set of two live times as input will be converted to the values in the second list
+lessonTimes = [[0,8.30,8.30,9.45,9.45,10.45, 10.45, 12.15,12.15,13.15,13.15,14.45,14.45,15.45,15.45,17,17,24],[-1,-1,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7]]
 
+# Interpolation code included, see https://docs.scipy.org/doc/scipy-0.19.1/reference/generated/scipy.interpolate.interp1d.html for docs
+# Only the normal interpolation is implemented, no fancy args.
 def interpolate(inputValue, source, result):
     source = group(source,2)
     result = group(result,2)
@@ -37,52 +41,77 @@ def group(lst, n):
     if len(val) == n:
       yield tuple(val)
 
+# End of interpolation code
 
 
-
-# leerlingnummer = input()
-
-
-
-items = ["startTime", "endTime", "dayOfWeek", "subject", "attendees", "location"]
-def getLesson(leerlingnummer):
+# Using urllib to retrieve Json data from the schedule page online
+def retrieveData(lln):
     try:
-        website = urllib.request.urlopen("https://beta.rooster.hetmml.nl/get/s/"+leerlingnummer+".json")
+        website = urllib.request.urlopen("https://beta.rooster.hetmml.nl/get/s/"+lln+".json")
         # time.sleep(1)
         siteContent = (website.read())
     except urllib.error.HTTPError:
         return ["error"]
 
     siteList = (str(siteContent)[2:-1])
-    siteJSON = json.loads(siteList)
+    result = json.loads(siteList)
+    return result
+
+def getScheduleTime():
+    global lessonTimes
+    now = datetime.datetime.now()
+    liveTime = float(now.hour) + float(now.minute/100)
+    lessonTime = interpolate( liveTime, lessonTimes[0], lessonTimes[1])
+    return lessonTime
+
+def getTime():
+    result = {}
+    weekday = datetime.datetime.today().weekday()
+    lesson = getScheduleTime()
+    # Since we want to say something about monday when asking sunday, we have to adjust if nesicarry
+    result["day"] = (weekday + (lesson == 7)) % 7
+    # If we are past the current day, ask the first hour of the next day
+    # Since this function only handles the time, we just want to return -1
+    result["hour"] = lesson - (lesson == 7) * 8
+    return result
 
 
-    # Manual overwrite
-    currentTime = interpolate( float(datetime.datetime.now().hour) + float(datetime.datetime.now().minute/100),[0,8.30,8.30,9.45,9.45,10.45, 10.45, 12.15,12.15,13.15,13.15,14.45,14.45,15.45,15.45,17,17,24],[-1,-1,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7])
-    # currentTime = interpolate(10.36,[8.20,9.35,9.35,10.35, 10.35, 12.05,12.05,13.05,13.05,14.35,14.35,15.35,15.5,17],[0,0,1,1,2,2,3,3,4,4,5,5,6,6])
+# items = ["startTime", "endTime", "dayOfWeek", "subject", "attendees", "location"]
+def getLesson(leerlingnummer):
 
-    # Manual overwrite
-    today = (datetime.datetime.today().weekday() + (currentTime == 7)) % 7
-    # today = 2
+    scheduleData = retrieveData(leerlingnummer)
 
-    currentTime = currentTime - (currentTime == 7) * 8
+    scheduleTime = getTime()
+    retrieveDay = scheduleTime["day"]
+    retrieveHour = scheduleTime["hour"]
 
-    currentlesson = None
-    nextlesson = None
-    for subject in siteJSON:
-        # print("currentTime is: " + str(currentTime))
-        if subject["dayOfWeek"] == today:
-            # datetime.
-            # print( str(subject["startTime"]) + " at " + str(currentTime))
-            if (subject["startTime"] <= currentTime) and (currentTime < subject["endTime"]):
-                currentlesson = (subject)
-                # print("found lesson")
-            # Seeing if it is the next lesson
-            nextTime = currentTime + 1.0
+    nextLessons = [None, None]
+    for subject in scheduleData:
+        if subject["dayOfWeek"] == retrieveDay:
+            if (subject["startTime"] <= retrieveHour) and (retrieveHour < subject["endTime"]):
+                nextLessons[0] = subject
+            nextTime = retrieveHour + 1.0
             if (subject["startTime"] <= nextTime) and (nextTime < subject["endTime"]):
-                nextlesson = (subject)
-                # print("found next lesson")
-    # print(currentlesson)
-    return [currentlesson, nextlesson]
-    # print(siteJSON[0]["startTime"])
-    # print(datetime.time.hour)
+                nextLessons[1] = subject
+    return nextLessons
+
+def getDay(leerlingnummer):
+    scheduleData = retrieveData(leerlingnummer)
+
+    scheduleTime = getTime()
+    retrieveDay = scheduleTime["day"]
+
+    nextLessons = []
+    for subject in scheduleData:
+        if subject["dayOfWeek"] == retrieveDay:
+            currentLessons.append(subject)
+    #TODO: order lessons
+    return nextLessons
+
+def getWeek(leerlingnummer):
+    scheduleData = retrieveData(leerlingnummer)
+    rooster = [[],[],[],[],[]]
+    for subject in scheduleData:
+        rooster[subject["dayOfWeek"]].append(subject)
+    #TODO: order lessons
+    return scheduleData

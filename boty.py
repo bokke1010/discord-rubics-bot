@@ -45,7 +45,7 @@ async def on_ready():
 async def on_message(message: discord.Message):
     if (message.author.id == client.user.id):
         return
-    
+
     if (isCommand("leerlingnummer", message.content) or isCommand("lln", message.content) or isCommand("studentnumber", message.content) or isCommand("studnr", message.content)):
         data["lln-s"][message.author.id] = message.content.split()[1]
         with open("data.json", "w+") as write_file:
@@ -53,7 +53,7 @@ async def on_message(message: discord.Message):
         print(message.channel.id)
         await client.send_message(message.channel, "Data saved")
         return
-    
+
     elif (isCommand("delete", message.content) or isCommand("del", message.content)):
         try:
             del data["lln-s"][message.author.id]
